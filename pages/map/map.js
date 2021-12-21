@@ -53,9 +53,9 @@ Page({
     })
   },
 
-  //初始化所有markers
-  initMarkers() {
-    console.log("initMarkers start")
+  //获取所有markers
+  getMarkers() {
+    console.log("@@@ getMarkers")
     let that = this
     return new Promise(function(resolve, reject) {
       wx.request({
@@ -77,7 +77,7 @@ Page({
               height: 40,
               customCallout: {
                 anchorY: 0,
-                anchorX: that.data.maxAnchorX,
+                anchorX: that.data.calloutDisplay ? 0 : that.data.maxAnchorX,
                 // display: 'BYCLICK',
                 display: 'ALWAYS',
               },
@@ -94,28 +94,34 @@ Page({
     })
   },
 
-  //获得地图
-  initMap() {
+  //获得当前坐标
+  getLocation() {
     let that = this
     //自行查询经纬度 http://www.gpsspg.com/maps.htm
-    wx.getLocation({
-      type: 'gcj02',  //wgs84 返回 gps 坐标，gcj02 返回可用于 wx.openLocation 的坐标
-      success(res) {
-        that.setData({
-          latitude: res.latitude,
-          longitude: res.longitude,
-          circles: [{
+    return new Promise(function(resolve, reject) {
+      wx.getLocation({
+        type: 'gcj02',  //wgs84 返回 gps 坐标，gcj02 返回可用于 wx.openLocation 的坐标
+        success(res) {
+          that.setData({
             latitude: res.latitude,
             longitude: res.longitude,
-            fillColor: '#7cb5ec88',
-            color: 'transparent',
-            radius: 0,
-            strokeWidth: 1
-          }],
-        })
-      }
-    })
-  },
+            circles: [{
+              latitude: res.latitude,
+              longitude: res.longitude,
+              fillColor: '#7cb5ec88',
+              color: 'transparent',
+              radius: 0,
+              strokeWidth: 1
+            }],
+          })
+          resolve(res)
+        },
+        fail(error) {
+          reject(error)
+        }
+      })
+    }
+  )},
 
   //wx.login封装
   wxLogin() {
@@ -215,14 +221,15 @@ Page({
     console.log("onShow()")
 
     let that = this;
-    that.initMap()
+    await that.getLocation()
 
-    let token = wx.getStorageSync('token'), code = ""
+    let token = wx.getStorageSync('token')
+    // console.log("wx.getStorageSync('token'),", token)
     if (!token) {
-      code = await that.wxLogin()
+      let code = await that.wxLogin()
       await that.fetchToken(code)
     }
-    that.initMarkers()
+    that.getMarkers()
   },
 
   /**
